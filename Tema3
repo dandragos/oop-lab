@@ -1,1 +1,175 @@
+#include <iostream>
+#include <string>
+#include <exception>
+
+// Singleton class for ID generation
+class IDGenerator {
+private:
+    static IDGenerator* instance;
+    int currentID;
+
+    IDGenerator() : currentID(0) {}
+
+public:
+    static IDGenerator* getInstance() {
+        if (instance == nullptr) {
+            instance = new IDGenerator();
+        }
+        return instance;
+    }
+
+    int getNextID() {
+        return ++currentID;
+    }
+};
+
+IDGenerator* IDGenerator::instance = nullptr;
+
+// Employee base class
+class Employee {
+protected:
+    int id;
+    std::string name;
+
+public:
+    virtual ~Employee() {}
+
+    virtual void print(std::ostream& out) const = 0;
+
+    virtual Employee* clone() const = 0;
+
+    // Downcast utility function
+    virtual void doWork() {
+        throw std::runtime_error("Cannot call doWork on base Employee class");
+    }
+};
+
+// Operator<< with virtual function
+std::ostream& operator<<(std::ostream& out, const Employee& emp) {
+    emp.print(out);
+    return out;
+}
+
+// Manager class inheriting from Employee
+class Manager : public Employee {
+public:
+    Manager(const std::string& name) {
+        this->name = name;
+        this->id = IDGenerator::getInstance()->getNextID();
+    }
+
+    void print(std::ostream& out) const override {
+        out << "Manager {ID: " << id << ", Name: " << name << "}";
+    }
+
+    Employee* clone() const override {
+        return new Manager(*this);
+    }
+
+    void doWork() override {
+        std::cout << name << " is managing his team\n";
+    }
+};
+
+// Programmer class inheriting from Employee
+class Programmer : public Employee {
+public:
+    Programmer(const std::string& name) {
+        this->name = name;
+        this->id = IDGenerator::getInstance()->getNextID();
+    }
+
+    void print(std::ostream& out) const override {
+        out << "Programmer {ID: " << id << ", Name: " << name << "}";
+    }
+
+    Employee* clone() const override {
+        return new Programmer(*this);
+    }
+
+    void doWork() override {
+        std::cout << name << " is writing code\n";
+    }
+};
+
+// Factory Method pattern
+class EmployeeFactory {
+public:
+    enum class Type { Manager, Programmer };
+
+    static Employee* create(Type type, const std::string& name) {
+        switch (type) {
+        case Type::Manager:
+            return new Manager(name);
+        case Type::Programmer:
+            return new Programmer(name);
+        default:
+            throw std::runtime_error("Invalid type");
+        }
+    }
+};
+
+// Template class
+template <typename T>
+class Container {
+private:
+    T element;
+
+public:
+    Container(T element) : element(element) {}
+
+    T get() { return element; }
+};
+
+// Template function
+template <typename T>
+void printElement(Container<T>& container) {
+    std::cout << "Element in container: " << container.get() << '\n';
+}
+
+int main() {
+    try {
+        Employee* manager1 = EmployeeFactory::create(EmployeeFactory::Type::Manager, "John");
+        Employee* programmer1 = EmployeeFactory::create(EmployeeFactory::Type::Programmer, "Alice");
+
+        std::cout << *manager1 << '\n';
+        std::cout << *programmer1 << '\n';
+
+        // Clone the employees
+        Employee* manager2 = manager1->clone();
+        Employee* programmer2 = programmer1->clone();
+
+        // Use dynamic_cast to call doWork
+        Manager* realManager = dynamic_cast<Manager*>(manager2);
+        if (realManager) {
+            realManager->doWork();
+        }
+
+        Programmer* realProgrammer = dynamic_cast<Programmer*>(programmer2);
+        if (realProgrammer) {
+            realProgrammer->doWork();
+        }
+
+        // Use the template class and function
+        Container<int> intContainer(10);
+        printElement(intContainer);
+
+        Container<std::string> stringContainer("Hello");
+        printElement(stringContainer);
+
+        // Cleanup
+        delete manager1;
+        delete programmer1;
+        delete manager2;
+        delete programmer2;
+
+    } catch (const std::exception& e) {
+        std::cerr << "Exception caught: " << e.what() << '\n';
+    } catch (...) {
+        std::cerr << "Unknown exception caught\n";
+    }
+
+    return 0;
+}
+
 
